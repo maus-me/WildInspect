@@ -1,6 +1,11 @@
 group 'Hooks:Lands'
 
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
+    compileOnly 'com.github.angeschossen:LandsAPI:6.44.0'
     compileOnly 'me.angeschossen:Lands:4.5.2.7'
     compileOnly "org.spigotmc:v1_8_R3-Taco:latest"
     compileOnly rootProject
