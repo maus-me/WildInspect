@@ -5,14 +5,7 @@ plugins {
 }
 
 group 'WildInspect'
-version = "2024.1"
-
-project.ext {
-    archiveFolder = file("archive/")
-    targetFolder = file("target/")
-    buildVersion = System.getenv("BUILD_NUMBER") == null || Boolean.parseBoolean(System.getenv("STABLE_BUILD")) ?
-            version : version + "-b" + System.getenv("BUILD_NUMBER")
-}
+version = "2.4.1"
 
 allprojects {
     apply plugin: 'java'
@@ -34,7 +27,7 @@ allprojects {
             file.text.contains('Bukkit.broadcastMessage')
         }.getFiles()
 
-        if (!filesWithDebug.isEmpty())
+        if(!filesWithDebug.isEmpty())
             throw new GradleException("Found debug messages: " + filesWithDebug)
     }
 
@@ -47,13 +40,11 @@ allprojects {
 subprojects {
     shadowJar {
         archiveFileName = "${project.name}.jar"
-        destinationDirectory = rootProject.archiveFolder
+        destinationDirectory = file("../archive/")
     }
 }
 
 dependencies {
-    implementation fileTree(rootProject.archiveFolder.getAbsolutePath())
-
     implementation 'com.bgsoftware.common.reflection:ReflectionUtils:latest'
     implementation 'com.bgsoftware.common.config:CommentedConfiguration:1.0.3'
 
@@ -65,7 +56,7 @@ dependencies {
 
 jar {
     from {
-        for (File file : rootProject.archiveFolder.listFiles()) {
+        for (File file : new File("archive").listFiles()) {
             zipTree(file)
         }
     }
@@ -73,10 +64,11 @@ jar {
 
 processResources {
     outputs.upToDateWhen {false}
+    String versionNumber = System.getenv("BUILD_NUMBER") == null ? version : version + "." + System.getenv("BUILD_NUMBER")
     eachFile { details ->
         if (details.name.contentEquals('plugin.yml')) {
             filter { String line ->
-                line.replace('${project.version}', rootProject.buildVersion)
+                line.replace('${project.version}', versionNumber)
             }
         }
     }
@@ -85,23 +77,30 @@ processResources {
 shadowJar {
     dependsOn(jar)
 
-    archiveFileName = rootProject.name + "-" + rootProject.buildVersion + ".jar"
+    if(System.getenv("BUILD_NUMBER") == null){
+        archiveName = rootProject.name + "-" + version + ".jar"
+    }
+    else{
+        archiveName = rootProject.name + "-" + version + "-b" + System.getenv("BUILD_NUMBER") + ".jar"
+    }
 
-    delete fileTree(rootProject.targetFolder.getAbsolutePath())
+    delete fileTree('./target/') {
+        exclude archiveName
+    }
 
-    destinationDirectory = rootProject.targetFolder
+    destinationDir = file("./target/")
     from sourceSets.getByName("main").output
     configurations = [project.configurations.getByName("runtimeClasspath")]
 }
 
 task copyAPI(type: Copy) {
-    from rootProject.archiveFolder.getAbsolutePath() + '/API.jar'
-    into rootProject.targetFolder.getAbsolutePath()
+    from './archive/API.jar'
+    into './target/'
     rename('API.jar', rootProject.name + 'API.jar')
 }
 
 clean {
-    delete rootProject.archiveFolder
+    delete file('./archive/')
 }
 
 build {
